@@ -1,0 +1,120 @@
+[project]
+name = "l10-backend"
+version = "0.1.0"
+description = "Level 10 meeting backend"
+requires-python = "==3.13.18"
+dependencies = [
+    "alembic==1.20.1",
+    "fastapi==0.165.0",
+    "psycopg[binary]==3.3.9",
+    "pydantic==2.14.4",
+    "pydantic-settings==2.16.3",
+    "sqlalchemy==2.1.9",
+    "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx==0.28.1",
+    "mypy==2.4.1",
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "concurrency: real concurrent requests against PostgreSQL",
+    "realtime: Server-Sent Events synchronisation",
+]
+filterwarnings = ["error::DeprecationWarning:app.*"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+extend-exclude = ["migrations/versions/0001_initial.py"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",    # incompatible with D211 (no blank line before class docstring)
+    "D213",    # incompatible with D212 (summary on the first docstring line)
+    "COM812",  # conflicts with the formatter
+    "ISC001",  # conflicts with the formatter
+    "FAST002", # Annotated defaults are used where a default exists; FastAPI dependencies are Annotated aliases
+    "B008",    # FastAPI's Depends()/Cookie() defaults are idiomatic
+    "FBT",     # boolean flags are keyword-only where used; FastAPI query params are not positional booleans
+    "TC",      # runtime imports are required: pydantic/FastAPI resolve annotations at runtime
+    "EM",      # message strings in exceptions are fine for this project's small, structured errors
+    "TRY003",  # long messages inside custom error helpers are intentional
+    "ANN401",  # Any is confined to JSON payloads
+    "PLR0913", # service functions take explicit collaborators instead of hidden globals
+    "PLR2004", # domain constants (13 weeks, 7 days) are named where they matter
+    "C901",    # business-rule functions are linear and readable
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "A002",
+    "A003",
+    "CPY001",  # no per-file copyright headers in this project
+    "PLR0917", # explicit positional collaborators in service signatures are intentional
+    "DTZ",     # timezone-awareness is enforced through the clock abstraction and tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",    # asserts are the point of tests
+    "S105", "S106", "S608",
+    "ANN",     # test functions are self-describing
+    "D",       # docstrings on tests are the test names
+    "PLR0913",
+    "INP001",
+    "E501",
+    "S603", "S607",
+    "SLF001",
+    "ARG001", "ARG002",
+    "PT006", "PT007", "PT011",
+    "ERA001",
+    "N802",
+    "T201",
+    "B023",
+    "PLC0415",
+    "RUF012",
+    "E731",
+    "PERF401",
+]
+"migrations/**" = ["D", "INP001", "E501", "S608"]
+"app/cli.py" = ["T201", "PLC0415"]
+"app/seed.py" = ["T201"]
+"app/models.py" = ["A001", "D101"]
+"app/main.py" = ["BLE001"]
+"app/routes/**" = ["D103"]
+"app/services/mutations.py" = ["S101"]
+"app/schemas.py" = ["D101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+files = ["app", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+check_untyped_defs = true

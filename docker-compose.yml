@@ -1,0 +1,63 @@
+name: l10
+
+services:
+  db:
+    image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+    environment:
+      POSTGRES_USER: l10
+      POSTGRES_PASSWORD: l10
+      POSTGRES_DB: l10
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U l10 -d l10"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # One-shot: apply migrations, then load seed data. Both are idempotent and never reset data.
+  init:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: l10-backend:local
+    command: ["sh", "-c", "python -m app.cli migrate && python -m app.cli seed"]
+    environment: &backend-env
+      DATABASE_URL: postgresql+psycopg://l10:l10@db:5432/l10
+      APP_NOW: ${APP_NOW:-2026-11-11T15:00:00Z}
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: l10-backend:local
+    environment: *backend-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status == 200 else 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

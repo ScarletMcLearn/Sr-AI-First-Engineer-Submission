@@ -1,0 +1,23 @@
+node_modules/
+.next/
+.pixi/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+playwright-report/
+test-results/
+.env
+.agent/
+*.tsbuildinfo
+Prompt-1.md
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+.pnpm-store/
+.next-e2e/

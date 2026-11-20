@@ -1,0 +1,68 @@
+[workspace]
+authors = ["Scarlet McLearn <getratulnow@gmail.com>"]
+channels = ["conda-forge"]
+name = "Sr-AI-First-Engineer"
+platforms = ["win-64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+# ---- environment -----------------------------------------------------------------------------
+install-backend = { cmd = "uv sync --frozen", cwd = "backend" }
+install-frontend = { cmd = "pnpm install --frozen-lockfile", cwd = "frontend" }
+install-browsers = { cmd = "pnpm exec playwright install chromium", cwd = "frontend", depends-on = ["install-frontend"] }
+install = { depends-on = ["install-backend", "install-frontend", "install-browsers"] }
+db-up = "docker compose up -d --wait db"
+db-down = "docker compose down"
+
+# ---- run -------------------------------------------------------------------------------------
+migrate = { cmd = "uv run --frozen python -m app.cli migrate", cwd = "backend", depends-on = ["db-up"] }
+seed = { cmd = "uv run --frozen python -m app.cli seed", cwd = "backend", depends-on = ["migrate"] }
+dev-backend = { cmd = "uv run --frozen uvicorn app.main:app --reload --port 8000", cwd = "backend", depends-on = ["seed"] }
+dev-frontend = { cmd = "pnpm dev", cwd = "frontend", depends-on = ["install-frontend"] }
+rules-report = { cmd = "uv run --frozen python -m app.cli rules-report", cwd = "backend", depends-on = ["seed"] }
+gen-api = { cmd = "uv run --frozen python -m app.cli openapi > ../frontend/openapi.json && pnpm run gen:api", cwd = "backend" }
+
+# ---- quality ---------------------------------------------------------------------------------
+lint-backend = { cmd = "uv run --frozen ruff check .", cwd = "backend" }
+lint-frontend = { cmd = "pnpm run lint", cwd = "frontend" }
+lint = { depends-on = ["lint-backend", "lint-frontend"] }
+format-check-backend = { cmd = "uv run --frozen ruff format --check .", cwd = "backend" }
+format-check-frontend = { cmd = "pnpm run format:check", cwd = "frontend" }
+format-check = { depends-on = ["format-check-backend", "format-check-frontend"] }
+format-backend = { cmd = "uv run --frozen ruff format .", cwd = "backend" }
+format-frontend = { cmd = "pnpm run format", cwd = "frontend" }
+format = { depends-on = ["format-backend", "format-frontend"] }
+typecheck-backend = { cmd = "uv run --frozen mypy", cwd = "backend" }
+typecheck-frontend = { cmd = "pnpm run typecheck", cwd = "frontend" }
+typecheck = { depends-on = ["typecheck-backend", "typecheck-frontend"] }
+
+# ---- tests -----------------------------------------------------------------------------------
+test-backend = { cmd = "uv run --frozen pytest --cov --cov-report=term --cov-report=xml", cwd = "backend", depends-on = ["db-up"] }
+test-rules = { cmd = "uv run --frozen pytest tests/test_rules.py tests/test_seed_report.py", cwd = "backend", depends-on = ["db-up"] }
+test-api = { cmd = "uv run --frozen pytest tests/test_api_authz.py tests/test_api_team.py tests/test_api_meetings.py", cwd = "backend", depends-on = ["db-up"] }
+test-concurrency = { cmd = "uv run --frozen pytest -m 'concurrency or realtime'", cwd = "backend", depends-on = ["db-up"] }
+test-e2e = { cmd = "pnpm exec playwright test", cwd = "frontend", depends-on = ["db-up", "install-browsers"] }
+# One command, unattended: backend unit/API/concurrency/real-time tests, then the Playwright suite.
+test-stack = { cmd = "pnpm run test:stack", cwd = "frontend", depends-on = ["install-frontend"] }
+test = { depends-on = ["test-backend", "test-stack", "test-e2e"] }
+
+# ---- assessment demonstration (see docs/DEMO_RECORDING_GUIDE.md) ----------------------------------
+demo-stack = { cmd = "pnpm run demo:stack", cwd = "frontend", depends-on = ["db-up", "install-browsers"] }
+demo-validate = { cmd = "pnpm run demo:validate", cwd = "frontend", depends-on = ["db-up", "install-browsers"] }
+demo-session = { cmd = "pnpm run demo:session", cwd = "frontend", depends-on = ["db-up", "install-browsers"] }
+demo = { cmd = "pnpm run demo", cwd = "frontend", depends-on = ["db-up", "install-browsers"] }
+
+# ---- build & full verification ---------------------------------------------------------------
+build = { cmd = "pnpm run build", cwd = "frontend", depends-on = ["install-frontend"] }
+check = { depends-on = ["lint", "format-check", "typecheck", "test", "build"] }
+
+[dependencies]
+python = "==3.13.18"
+nodejs = "==24.22.3"
+pnpm = "==12.22.0"
+uv = "==0.13.9"
+
+[activation.env]
+UV_PYTHON_PREFERENCE = "only-system"
+UV_PYTHON_DOWNLOADS = "never"
+UV_PROJECT_ENVIRONMENT = ".venv"

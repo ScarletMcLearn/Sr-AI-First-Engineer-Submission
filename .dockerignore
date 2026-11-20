@@ -1,0 +1,15 @@
+.git
+.pixi
+.pnpm-store
+backend/.venv
+backend/.mypy_cache
+backend/.ruff_cache
+backend/.pytest_cache
+frontend/node_modules
+frontend/.next
+frontend/.next-e2e
+frontend/playwright-report
+frontend/test-results
+docs
+Prompt-1.md
+*.docx
